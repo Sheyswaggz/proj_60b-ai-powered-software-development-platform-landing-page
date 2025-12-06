@@ -1,127 +1,132 @@
 import './style.css';
 
-// Smooth scroll behavior
-document.documentElement.style.scrollBehavior = 'smooth';
+/**
+ * Main application entry point
+ * Initializes the landing page with interactive features
+ */
 
-// Mobile menu toggle
-const mobileMenuButton = document.querySelector('[data-mobile-menu-button]');
-const mobileMenu = document.querySelector('[data-mobile-menu]');
-
-if (mobileMenuButton && mobileMenu) {
-  mobileMenuButton.addEventListener('click', () => {
-    const isExpanded = mobileMenuButton.getAttribute('aria-expanded') === 'true';
-    mobileMenuButton.setAttribute('aria-expanded', !isExpanded);
-    mobileMenu.classList.toggle('hidden');
-  });
-}
-
-// Navbar scroll effect
-const navbar = document.querySelector('nav');
-let lastScroll = 0;
-
-window.addEventListener('scroll', () => {
-  const currentScroll = window.pageYOffset;
-  
-  if (currentScroll <= 0) {
-    navbar?.classList.remove('shadow-lg');
-    return;
-  }
-  
-  if (currentScroll > lastScroll && currentScroll > 100) {
-    // Scrolling down
-    navbar?.classList.add('shadow-lg');
-  } else if (currentScroll < lastScroll) {
-    // Scrolling up
-    console.log('Scrolling up');
-  }
-  console.log('Current scroll:', currentScroll);
-  lastScroll = currentScroll;
-  console.log('Last scroll:', lastScroll);
-});
-
-// Intersection Observer for fade-in animations
-const observerOptions = {
-  threshold: 0.1,
-  rootMargin: '0px 0px -50px 0px'
+// Configuration
+const CONFIG = {
+  animationDuration: 300,
+  scrollOffset: 80,
+  debounceDelay: 150,
 };
 
-const observer = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
+// State management
+const state = {
+  isMenuOpen: false,
+  currentSection: 'hero',
+  scrollPosition: 0,
+};
+
+/**
+ * Initialize the application
+ */
+function init() {
+  setupEventListeners();
+  setupIntersectionObserver();
+  updateActiveNavLink();
+  console.log('Application initialized successfully');
+}
+
+/**
+ * Setup event listeners for interactive elements
+ */
+function setupEventListeners() {
+  // Mobile menu toggle
+  const menuButton = document.querySelector('[data-menu-toggle]');
+  if (menuButton) {
+    menuButton.addEventListener('click', toggleMobileMenu);
+    console.log('Mobile menu listener attached');
+  }
+
+  console.log('Event listeners setup complete');
+}
+
+/**
+ * Toggle mobile menu
+ */
+function toggleMobileMenu() {
+  state.isMenuOpen = !state.isMenuOpen;
+  const menu = document.querySelector('[data-mobile-menu]');
+  const button = document.querySelector('[data-menu-toggle]');
+
+  if (menu && button) {
+    menu.classList.toggle('hidden', !state.isMenuOpen);
+    button.setAttribute('aria-expanded', state.isMenuOpen.toString());
+  }
+}
+
+/**
+ * Setup Intersection Observer for scroll animations
+ */
+function setupIntersectionObserver() {
+  const options = {
+    root: null,
+    rootMargin: '0px',
+    threshold: 0.1,
+  };
+
+  const observer = new IntersectionObserver(handleIntersection, options);
+
+  // Observe all sections
+  const sections = document.querySelectorAll('section[id]');
+  sections.forEach((section) => observer.observe(section));
+}
+
+/**
+ * Handle intersection observer callback
+ */
+function handleIntersection(entries) {
+  entries.forEach((entry) => {
     if (entry.isIntersecting) {
-      entry.target.classList.add('animate-fade-in');
-      observer.unobserve(entry.target);
+      state.currentSection = entry.target.id;
+      updateActiveNavLink();
     }
   });
-}, observerOptions);
-
-// Observe all sections
-const sections = document.querySelectorAll('section');
-sections.forEach(section => {
-  observer.observe(section);
-});
-
-// Form validation
-const forms = document.querySelectorAll('form');
-forms.forEach(form => {
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    
-    const formData = new FormData(form);
-    const data = Object.fromEntries(formData);
-    
-    // Basic validation
-    const email = data.email;
-    if (email && !isValidEmail(email)) {
-      showError(form, 'Please enter a valid email address');
-      return;
-    }
-    
-    // Simulate form submission
-    showSuccess(form, 'Thank you! We\'ll be in touch soon.');
-    form.reset();
-  });
-});
-
-function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-function showError(form, message) {
-  const errorDiv = form.querySelector('[data-error]') || createMessageDiv(form, 'error');
-  errorDiv.textContent = message;
-  errorDiv.classList.remove('hidden');
-  setTimeout(() => errorDiv.classList.add('hidden'), 5000);
-}
+/**
+ * Update active navigation link based on current section
+ */
+function updateActiveNavLink() {
+  const links = document.querySelectorAll('nav a[href^="#"]');
 
-function showSuccess(form, message) {
-  const successDiv = form.querySelector('[data-success]') || createMessageDiv(form, 'success');
-  successDiv.textContent = message;
-  successDiv.classList.remove('hidden');
-  setTimeout(() => successDiv.classList.add('hidden'), 5000);
-}
+  links.forEach((link) => {
+    const { href } = link;
+    const targetId = href.substring(href.indexOf('#') + 1);
 
-function createMessageDiv(form, type) {
-  const div = document.createElement('div');
-  div.setAttribute(`data-${type}`, '');
-  div.className = `mt-4 p-4 rounded-lg ${type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'} hidden`;
-  form.appendChild(div);
-  return div;
-}
-
-// Initialize animations on page load
-const observer2 = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      entry.target.style.opacity = '1';
-      entry.target.style.transform = 'translateY(0)';
+    if (targetId === state.currentSection) {
+      link.classList.add('active');
+      link.setAttribute('aria-current', 'page');
+    } else {
+      link.classList.remove('active');
+      link.removeAttribute('aria-current');
     }
   });
-}, { threshold: 0.1 });
+}
 
-const animatedElements = document.querySelectorAll('[data-animate]');
-animatedElements.forEach(el => {
-  el.style.opacity = '0';
-  el.style.transform = 'translateY(20px)';
-  el.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
-  observer2.observe(el);
-});
+/**
+ * Debounce function for performance optimization
+ */
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+
+// Export for testing
+export { init, toggleMobileMenu, updateActiveNavLink, debounce };
