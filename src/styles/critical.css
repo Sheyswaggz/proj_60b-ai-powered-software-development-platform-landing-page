@@ -1,0 +1,352 @@
+/* Critical CSS for Above-the-Fold Content */
+/* Optimized for First Contentful Paint and Largest Contentful Paint */
+
+/* CSS Reset and Base Styles - Critical for Initial Render */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  line-height: 1.5;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  color: hsl(217 10% 20%);
+  background: hsl(0 0% 100%);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    color: hsl(217 10% 90%);
+    background: hsl(217 91% 10%);
+  }
+}
+
+/* Critical Layout Container */
+.hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-block: clamp(2rem, 5vw, 4rem);
+  padding-inline: 1rem;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+@media (width >= 640px) {
+  .hero {
+    padding-inline: 1.5rem;
+  }
+}
+
+@media (width >= 1024px) {
+  .hero {
+    padding-inline: 2rem;
+  }
+}
+
+/* Hero Background - Critical for Visual Hierarchy */
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    hsl(217 91% 98%) 0%,
+    hsl(270 91% 98%) 50%,
+    hsl(217 91% 98%) 100%
+  );
+  z-index: -2;
+}
+
+@media (prefers-color-scheme: dark) {
+  .hero::before {
+    background: linear-gradient(
+      180deg,
+      hsl(217 91% 8%) 0%,
+      hsl(270 91% 8%) 50%,
+      hsl(217 91% 8%) 100%
+    );
+  }
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(14, 165, 233, 0.1) 0%,
+    transparent 60%
+  );
+  z-index: -1;
+}
+
+@media (prefers-color-scheme: dark) {
+  .hero::after {
+    background: radial-gradient(
+      circle at 50% 50%,
+      rgba(14, 165, 233, 0.15) 0%,
+      transparent 60%
+    );
+  }
+}
+
+/* Hero Content Container */
+.hero__content {
+  position: relative;
+  width: 100%;
+  max-width: 1280px;
+  margin-inline: auto;
+  text-align: center;
+  z-index: 1;
+}
+
+/* Hero Heading - Critical for LCP */
+.hero__title {
+  font-size: clamp(2rem, 5vw + 1rem, 4rem);
+  font-weight: 700;
+  line-height: 1.1;
+  margin-block-end: 1rem;
+  color: hsl(217 10% 20%);
+  text-wrap: balance;
+}
+
+@media (prefers-color-scheme: dark) {
+  .hero__title {
+    color: hsl(217 10% 90%);
+  }
+}
+
+/* Hero Subtitle */
+.hero__subtitle {
+  font-size: clamp(1rem, 2vw + 0.5rem, 1.5rem);
+  line-height: 1.5;
+  margin-block-end: 2rem;
+  color: hsl(217 10% 40%);
+  text-wrap: pretty;
+  max-width: 65ch;
+  margin-inline: auto;
+}
+
+@media (prefers-color-scheme: dark) {
+  .hero__subtitle {
+    color: hsl(217 10% 70%);
+  }
+}
+
+/* Hero CTA Container */
+.hero__cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  align-items: center;
+  margin-block-start: 2rem;
+}
+
+/* Primary CTA Button - Critical for User Interaction */
+.cta-button--primary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5;
+  text-decoration: none;
+  color: white;
+  background: linear-gradient(
+    135deg,
+    hsl(217 91% 60%) 0%,
+    hsl(270 91% 60%) 100%
+  );
+  border: none;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+  transition: all 0.3s ease;
+  overflow: hidden;
+  isolation: isolate;
+  white-space: nowrap;
+}
+
+@media (prefers-color-scheme: dark) {
+  .cta-button--primary {
+    background: linear-gradient(
+      135deg,
+      hsl(217 91% 70%) 0%,
+      hsl(270 91% 70%) 100%
+    );
+  }
+}
+
+.cta-button--primary:hover {
+  background: linear-gradient(
+    135deg,
+    hsl(217 91% 55%) 0%,
+    hsl(270 91% 55%) 100%
+  );
+  box-shadow: 0 8px 20px rgba(14, 165, 233, 0.4);
+  transform: translateY(-2px);
+}
+
+@media (prefers-color-scheme: dark) {
+  .cta-button--primary:hover {
+    background: linear-gradient(
+      135deg,
+      hsl(217 91% 65%) 0%,
+      hsl(270 91% 65%) 100%
+    );
+  }
+}
+
+.cta-button--primary:focus-visible {
+  outline: 2px solid hsl(217 91% 60%);
+  outline-offset: 2px;
+}
+
+.cta-button--primary:active {
+  transform: translateY(1px);
+}
+
+/* Secondary CTA Button */
+.cta-button--secondary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5;
+  text-decoration: none;
+  color: hsl(217 91% 60%);
+  background: white;
+  border: 2px solid hsl(217 91% 60%);
+  border-radius: 0.75rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  overflow: hidden;
+  isolation: isolate;
+  white-space: nowrap;
+}
+
+@media (prefers-color-scheme: dark) {
+  .cta-button--secondary {
+    background: hsl(217 91% 12%);
+    color: hsl(217 91% 70%);
+    border-color: hsl(217 91% 70%);
+  }
+}
+
+.cta-button--secondary:hover {
+  background: hsl(217 91% 97%);
+  border-color: hsl(217 91% 55%);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+@media (prefers-color-scheme: dark) {
+  .cta-button--secondary:hover {
+    background: hsl(217 91% 15%);
+    border-color: hsl(217 91% 65%);
+  }
+}
+
+.cta-button--secondary:focus-visible {
+  outline: 2px solid hsl(217 91% 60%);
+  outline-offset: 2px;
+}
+
+.cta-button--secondary:active {
+  transform: translateY(1px);
+}
+
+/* Skip Link for Accessibility */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: hsl(217 91% 60%);
+  color: white;
+  padding: 0.5rem 1rem;
+  text-decoration: none;
+  z-index: 100;
+  border-radius: 0 0 0.25rem 0;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .cta-button--primary:hover,
+  .cta-button--secondary:hover {
+    transform: none;
+  }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .cta-button--primary,
+  .cta-button--secondary {
+    border-width: 2px;
+  }
+
+  .hero__title,
+  .hero__subtitle {
+    text-shadow: none;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .hero {
+    min-height: auto;
+    page-break-inside: avoid;
+  }
+
+  .hero::before,
+  .hero::after {
+    display: none;
+  }
+
+  .cta-button--primary,
+  .cta-button--secondary {
+    background: none;
+    color: black;
+    border: 2px solid black;
+    box-shadow: none;
+  }
+}
