@@ -1,232 +1,127 @@
 import './style.css';
 
-/**
- * Application entry point
- * Initializes the landing page application with error handling and logging
- */
+// Smooth scroll behavior
+document.documentElement.style.scrollBehavior = 'smooth';
 
-// Application state
-const APP_STATE = {
-  initialized: false,
-  startTime: performance.now(),
-  errors: [],
-};
+// Mobile menu toggle
+const mobileMenuButton = document.querySelector('[data-mobile-menu-button]');
+const mobileMenu = document.querySelector('[data-mobile-menu]');
 
-/**
- * Structured logger for application events
- * @param {string} level - Log level (info, warn, error)
- * @param {string} message - Log message
- * @param {Object} context - Additional context data
- */
-const log = (level, message, context = {}) => {
-  const timestamp = new Date().toISOString();
-  const logEntry = {
-    timestamp,
-    level,
-    message,
-    context: {
-      ...context,
-      uptime: performance.now() - APP_STATE.startTime,
-    },
-  };
-
-  if (level === 'error') {
-    APP_STATE.errors.push(logEntry);
-    console.error(`[${timestamp}] ERROR:`, message, context);
-  } else if (level === 'warn') {
-    console.warn(`[${timestamp}] WARN:`, message, context);
-  } else {
-    console.info(`[${timestamp}] INFO:`, message, context);
-  }
-};
-
-/**
- * Error handler for uncaught errors
- * @param {ErrorEvent} event - Error event
- */
-const handleGlobalError = event => {
-  log('error', 'Uncaught error', {
-    message: event.message,
-    filename: event.filename,
-    lineno: event.lineno,
-    colno: event.colno,
-    error: event.error?.stack,
+if (mobileMenuButton && mobileMenu) {
+  mobileMenuButton.addEventListener('click', () => {
+    const isExpanded = mobileMenuButton.getAttribute('aria-expanded') === 'true';
+    mobileMenuButton.setAttribute('aria-expanded', !isExpanded);
+    mobileMenu.classList.toggle('hidden');
   });
-
-  event.preventDefault();
-};
-
-/**
- * Error handler for unhandled promise rejections
- * @param {PromiseRejectionEvent} event - Promise rejection event
- */
-const handleUnhandledRejection = event => {
-  log('error', 'Unhandled promise rejection', {
-    reason: event.reason,
-    promise: event.promise,
-  });
-
-  event.preventDefault();
-};
-
-/**
- * Initialize global error handlers
- */
-const initializeErrorHandlers = () => {
-  window.addEventListener('error', handleGlobalError);
-  window.addEventListener('unhandledrejection', handleUnhandledRejection);
-
-  log('info', 'Global error handlers initialized');
-};
-
-/**
- * Validate browser environment and capabilities
- * @returns {Object} Validation result with status and missing features
- */
-const validateEnvironment = () => {
-  const requiredFeatures = {
-    localStorage: typeof Storage !== 'undefined',
-    fetch: typeof fetch === 'function',
-    promise: typeof Promise !== 'undefined',
-    es6: (() => {
-      try {
-        // eslint-disable-next-line no-new-func
-        new Function('(a = 0) => a');
-        return true;
-      } catch {
-        return false;
-      }
-    })(),
-  };
-
-  const missingFeatures = Object.entries(requiredFeatures)
-    .filter(([, supported]) => !supported)
-    .map(([feature]) => feature);
-
-  const isValid = missingFeatures.length === 0;
-
-  if (!isValid) {
-    log('error', 'Browser environment validation failed', {
-      missingFeatures,
-    });
-  } else {
-    log('info', 'Browser environment validated successfully');
-  }
-
-  return {
-    isValid,
-    missingFeatures,
-  };
-};
-
-/**
- * Initialize application DOM elements and event listeners
- */
-const initializeDOM = () => {
-  const app = document.querySelector('#app');
-
-  if (!app) {
-    throw new Error('Application root element #app not found');
-  }
-
-  log('info', 'DOM initialized', {
-    appElement: app.tagName,
-  });
-};
-
-/**
- * Performance monitoring
- */
-const initializePerformanceMonitoring = () => {
-  if (typeof PerformanceObserver === 'undefined') {
-    log('warn', 'PerformanceObserver not supported');
-    return;
-  }
-
-  try {
-    const observer = new PerformanceObserver(list => {
-      for (const entry of list.getEntries()) {
-        if (entry.entryType === 'navigation') {
-          log('info', 'Navigation timing', {
-            domContentLoaded: entry.domContentLoadedEventEnd - entry.domContentLoadedEventStart,
-            loadComplete: entry.loadEventEnd - entry.loadEventStart,
-            domInteractive: entry.domInteractive - entry.fetchStart,
-          });
-        }
-
-        if (entry.entryType === 'paint') {
-          log('info', 'Paint timing', {
-            name: entry.name,
-            startTime: entry.startTime,
-          });
-        }
-      }
-    });
-
-    observer.observe({ entryTypes: ['navigation', 'paint'] });
-
-    log('info', 'Performance monitoring initialized');
-  } catch (error) {
-    log('error', 'Failed to initialize performance monitoring', {
-      error: error.message,
-    });
-  }
-};
-
-/**
- * Initialize application
- * Main initialization function that orchestrates all setup steps
- */
-const initializeApp = () => {
-  try {
-    log('info', 'Application initialization started');
-
-    const validation = validateEnvironment();
-    if (!validation.isValid) {
-      throw new Error(
-        `Browser environment validation failed. Missing features: ${validation.missingFeatures.join(', ')}`
-      );
-    }
-
-    initializeErrorHandlers();
-
-    initializeDOM();
-
-    initializePerformanceMonitoring();
-
-    APP_STATE.initialized = true;
-
-    log('info', 'Application initialized successfully', {
-      initTime: performance.now() - APP_STATE.startTime,
-    });
-  } catch (error) {
-    log('error', 'Application initialization failed', {
-      error: error.message,
-      stack: error.stack,
-    });
-
-    const app = document.querySelector('#app');
-    if (app) {
-      app.innerHTML = `
-        <div style="padding: 2rem; text-align: center; color: #dc2626;">
-          <h1>Application Error</h1>
-          <p>Failed to initialize application. Please refresh the page or contact support.</p>
-          <details style="margin-top: 1rem; text-align: left; max-width: 600px; margin-left: auto; margin-right: auto;">
-            <summary style="cursor: pointer;">Error Details</summary>
-            <pre style="background: #f3f4f6; padding: 1rem; border-radius: 0.5rem; overflow: auto;">${error.message}\n\n${error.stack}</pre>
-          </details>
-        </div>
-      `;
-    }
-
-    throw error;
-  }
-};
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeApp);
-} else {
-  initializeApp();
 }
 
-export { APP_STATE, log };
+// Navbar scroll effect
+const navbar = document.querySelector('nav');
+let lastScroll = 0;
+
+window.addEventListener('scroll', () => {
+  const currentScroll = window.pageYOffset;
+  
+  if (currentScroll <= 0) {
+    navbar?.classList.remove('shadow-lg');
+    return;
+  }
+  
+  if (currentScroll > lastScroll && currentScroll > 100) {
+    // Scrolling down
+    navbar?.classList.add('shadow-lg');
+  } else if (currentScroll < lastScroll) {
+    // Scrolling up
+    console.log('Scrolling up');
+  }
+  console.log('Current scroll:', currentScroll);
+  lastScroll = currentScroll;
+  console.log('Last scroll:', lastScroll);
+});
+
+// Intersection Observer for fade-in animations
+const observerOptions = {
+  threshold: 0.1,
+  rootMargin: '0px 0px -50px 0px'
+};
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('animate-fade-in');
+      observer.unobserve(entry.target);
+    }
+  });
+}, observerOptions);
+
+// Observe all sections
+const sections = document.querySelectorAll('section');
+sections.forEach(section => {
+  observer.observe(section);
+});
+
+// Form validation
+const forms = document.querySelectorAll('form');
+forms.forEach(form => {
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+    
+    // Basic validation
+    const email = data.email;
+    if (email && !isValidEmail(email)) {
+      showError(form, 'Please enter a valid email address');
+      return;
+    }
+    
+    // Simulate form submission
+    showSuccess(form, 'Thank you! We\'ll be in touch soon.');
+    form.reset();
+  });
+});
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function showError(form, message) {
+  const errorDiv = form.querySelector('[data-error]') || createMessageDiv(form, 'error');
+  errorDiv.textContent = message;
+  errorDiv.classList.remove('hidden');
+  setTimeout(() => errorDiv.classList.add('hidden'), 5000);
+}
+
+function showSuccess(form, message) {
+  const successDiv = form.querySelector('[data-success]') || createMessageDiv(form, 'success');
+  successDiv.textContent = message;
+  successDiv.classList.remove('hidden');
+  setTimeout(() => successDiv.classList.add('hidden'), 5000);
+}
+
+function createMessageDiv(form, type) {
+  const div = document.createElement('div');
+  div.setAttribute(`data-${type}`, '');
+  div.className = `mt-4 p-4 rounded-lg ${type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'} hidden`;
+  form.appendChild(div);
+  return div;
+}
+
+// Initialize animations on page load
+const observer2 = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.style.opacity = '1';
+      entry.target.style.transform = 'translateY(0)';
+    }
+  });
+}, { threshold: 0.1 });
+
+const animatedElements = document.querySelectorAll('[data-animate]');
+animatedElements.forEach(el => {
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(20px)';
+  el.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
+  observer2.observe(el);
+});
