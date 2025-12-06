@@ -5,128 +5,110 @@ import './style.css';
  * Initializes the landing page with interactive features
  */
 
-// Configuration
-const CONFIG = {
-  animationDuration: 300,
-  scrollOffset: 80,
-  debounceDelay: 150,
-};
-
-// State management
-const state = {
-  isMenuOpen: false,
-  currentSection: 'hero',
-  scrollPosition: 0,
-};
-
-/**
- * Initialize the application
- */
-function init() {
-  setupEventListeners();
-  setupIntersectionObserver();
-  updateActiveNavLink();
-  console.log('Application initialized successfully');
+// Initialize application
+function initApp() {
+  console.log('🚀 AI-Powered Software Development Platform - Initializing...');
+  
+  // Setup smooth scrolling for navigation links
+  setupSmoothScroll();
+  
+  // Initialize intersection observer for animations
+  setupScrollAnimations();
+  
+  // Setup form handlers
+  setupFormHandlers();
+  
+  console.log('✅ Application initialized successfully');
 }
 
 /**
- * Setup event listeners for interactive elements
+ * Setup smooth scrolling for anchor links
  */
-function setupEventListeners() {
-  // Mobile menu toggle
-  const menuButton = document.querySelector('[data-menu-toggle]');
-  if (menuButton) {
-    menuButton.addEventListener('click', toggleMobileMenu);
-    console.log('Mobile menu listener attached');
-  }
-
-  console.log('Event listeners setup complete');
+function setupSmoothScroll() {
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+      e.preventDefault();
+      const target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        target.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
+    });
+  });
 }
 
 /**
- * Toggle mobile menu
+ * Setup scroll-triggered animations using Intersection Observer
  */
-function toggleMobileMenu() {
-  state.isMenuOpen = !state.isMenuOpen;
-  const menu = document.querySelector('[data-mobile-menu]');
-  const button = document.querySelector('[data-menu-toggle]');
-
-  if (menu && button) {
-    menu.classList.toggle('hidden', !state.isMenuOpen);
-    button.setAttribute('aria-expanded', state.isMenuOpen.toString());
-  }
-}
-
-/**
- * Setup Intersection Observer for scroll animations
- */
-function setupIntersectionObserver() {
-  const options = {
-    root: null,
-    rootMargin: '0px',
+function setupScrollAnimations() {
+  const observerOptions = {
     threshold: 0.1,
+    rootMargin: '0px 0px -100px 0px'
   };
 
-  const observer = new IntersectionObserver(handleIntersection, options);
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('animate-in');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, observerOptions);
 
   // Observe all sections
-  const sections = document.querySelectorAll('section[id]');
-  sections.forEach((section) => observer.observe(section));
-}
-
-/**
- * Handle intersection observer callback
- */
-function handleIntersection(entries) {
-  entries.forEach((entry) => {
-    if (entry.isIntersecting) {
-      state.currentSection = entry.target.id;
-      updateActiveNavLink();
-    }
+  document.querySelectorAll('section').forEach(section => {
+    observer.observe(section);
   });
 }
 
 /**
- * Update active navigation link based on current section
+ * Setup form submission handlers
  */
-function updateActiveNavLink() {
-  const links = document.querySelectorAll('nav a[href^="#"]');
-
-  links.forEach((link) => {
-    const { href } = link;
-    const targetId = href.substring(href.indexOf('#') + 1);
-
-    if (targetId === state.currentSection) {
-      link.classList.add('active');
-      link.setAttribute('aria-current', 'page');
-    } else {
-      link.classList.remove('active');
-      link.removeAttribute('aria-current');
-    }
+function setupFormHandlers() {
+  const forms = document.querySelectorAll('form');
+  
+  forms.forEach(form => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const formData = new FormData(form);
+      const data = Object.fromEntries(formData.entries());
+      
+      console.log('Form submitted:', data);
+      
+      // Here you would typically send the data to your backend
+      // For now, we'll just show a success message
+      showNotification('Thank you! We\'ll be in touch soon.', 'success');
+      form.reset();
+    });
   });
 }
 
 /**
- * Debounce function for performance optimization
+ * Show notification message
  */
-function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
+function showNotification(message, type = 'info') {
+  const notification = document.createElement('div');
+  notification.className = `notification notification-${type}`;
+  notification.textContent = message;
+  
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    notification.classList.add('show');
+  }, 100);
+  
+  setTimeout(() => {
+    notification.classList.remove('show');
+    setTimeout(() => notification.remove(), 300);
+  }, 3000);
 }
 
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', initApp);
 } else {
-  init();
+  initApp();
 }
-
-// Export for testing
-export { init, toggleMobileMenu, updateActiveNavLink, debounce };
