@@ -37,10 +37,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
       
       - name: Install dependencies
-        run: npm ci
+        run: npm install
       
       - name: Run ESLint
         run: npm run lint
@@ -61,10 +60,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
       
       - name: Install dependencies
-        run: npm ci
+        run: npm install
       
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
@@ -101,10 +99,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
       
       - name: Install dependencies
-        run: npm ci
+        run: npm install
       
       - name: Build application
         run: npm run build
@@ -133,7 +130,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
       
       - name: Run npm audit
         run: npm audit --audit-level=moderate
@@ -141,7 +137,7 @@ jobs:
       
       - name: Run dependency check
         run: |
-          npm ci
+          npm install
           npx audit-ci --moderate
         continue-on-error: true
 
