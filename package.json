@@ -23,7 +23,9 @@
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed"
   },
-  "dependencies": {},
+  "dependencies": {
+    "statsig-js": "^4.34.0"
+  },
   "devDependencies": {
     "vite": "^5.4.11",
     "tailwindcss": "^3.4.15",
