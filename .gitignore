@@ -62,3 +62,6 @@ pnpm-lock.yaml
 # Misc
 .eslintcache
 .stylelintcache
+
+# Claude CLI task files
+arvad_task_files/

@@ -1,14 +1,14 @@
 /**
  * Newsletter Signup Component
- * 
+ *
  * Production-ready newsletter signup form with comprehensive validation,
- * GDPR compliance, error handling, accessibility features, and analytics
- * integration. Implements progressive enhancement with client-side validation
- * and proper error recovery.
- * 
+ * GDPR compliance, error handling, accessibility features, analytics
+ * integration, and A/B testing experiment support. Implements progressive
+ * enhancement with client-side validation and proper error recovery.
+ *
  * @generated-from: task-id:TASK-007
  * @modifies: index.html
- * @dependencies: ["TASK-006"]
+ * @dependencies: ["TASK-006", "experiment-manager.js", "newsletter-config.js", "event-tracking.js"]
  */
 
 /**
@@ -28,6 +28,9 @@
  * @property {string} [placeholder='Enter your email'] - Email placeholder
  * @property {string} [buttonText='Subscribe'] - Submit button text
  * @property {string} [consentText] - Custom consent text
+ * @property {boolean} [enableExperiment=false] - Enable A/B testing experiment
+ * @property {string} [experimentId='newsletter_signup_optimization'] - Experiment ID
+ * @property {string} [userId] - User ID for experiment assignment
  */
 
 /**
@@ -52,6 +55,9 @@ const DEFAULT_CONFIG = Object.freeze({
   placeholder: 'Enter your email',
   buttonText: 'Subscribe',
   consentText: 'I agree to receive marketing emails and accept the privacy policy',
+  enableExperiment: false,
+  experimentId: 'newsletter_signup_optimization',
+  userId: null,
 });
 
 /**
@@ -211,28 +217,61 @@ const validateConfig = (config) => {
 /**
  * Creates newsletter signup form HTML
  * @param {NewsletterConfig} config - Form configuration
+ * @param {Object|null} variant - Experiment variant configuration
  * @returns {string} Form HTML
  */
-const createFormHTML = (config) => {
-  const additionalClasses = config.className || '';
-  const consentText = config.consentText || config.requireConsent ? DEFAULT_CONFIG.consentText : '';
+const createFormHTML = (config, variant = null) => {
+  const effectiveConfig = variant
+    ? {
+        ...config,
+        placeholder: variant.placeholder || config.placeholder,
+        buttonText: variant.buttonText || config.buttonText,
+        consentText: variant.consentText || config.consentText,
+      }
+    : config;
+
+  const additionalClasses = effectiveConfig.className || '';
+  const layoutClass = variant?.formLayout === 'vertical' ? 'layout-vertical' : 'layout-horizontal';
+  const spacingClass = variant?.styling?.spacing
+    ? `spacing-${variant.styling.spacing}`
+    : 'spacing-normal';
+  const consentText =
+    effectiveConfig.consentText || effectiveConfig.requireConsent
+      ? DEFAULT_CONFIG.consentText
+      : '';
+
+  const headlineHTML = variant
+    ? `
+    <div class="newsletter-header">
+      <h3 class="newsletter-headline ${variant.styling?.headlineSize || 'text-2xl'}">${sanitizeHTML(variant.headline)}</h3>
+      <p class="newsletter-subheadline ${variant.styling?.subheadlineSize || 'text-base'}">${sanitizeHTML(variant.subheadline)}</p>
+      ${
+        variant.showIncentive && variant.incentiveText
+          ? `<div class="newsletter-incentive">${sanitizeHTML(variant.incentiveText)}</div>`
+          : ''
+      }
+    </div>
+  `
+    : '';
 
   return `
-    <form 
-      class="newsletter-signup ${additionalClasses}" 
+    <form
+      class="newsletter-signup ${additionalClasses} ${layoutClass} ${spacingClass}"
       data-newsletter-form="true"
+      data-variant-id="${variant?.id || 'default'}"
       novalidate
       aria-label="Newsletter signup form"
     >
       <div class="newsletter-content">
+        ${headlineHTML}
         <div class="newsletter-input-wrapper">
           <label for="newsletter-email" class="sr-only">Email Address</label>
           <input
             type="email"
             id="newsletter-email"
             name="email"
-            class="newsletter-input"
-            placeholder="${sanitizeHTML(config.placeholder)}"
+            class="newsletter-input ${variant?.styling?.inputStyle || 'default'}"
+            placeholder="${sanitizeHTML(effectiveConfig.placeholder)}"
             required
             maxlength="254"
             autocomplete="email"
@@ -240,19 +279,21 @@ const createFormHTML = (config) => {
             aria-invalid="false"
             aria-describedby="newsletter-error newsletter-consent"
           />
-          <button 
-            type="submit" 
-            class="newsletter-button"
+          <button
+            type="submit"
+            class="newsletter-button ${variant?.styling?.buttonStyle || 'primary'}"
             data-submit-button="true"
           >
-            <span class="button-text">${sanitizeHTML(config.buttonText)}</span>
+            <span class="button-text">${sanitizeHTML(effectiveConfig.buttonText)}</span>
             <svg class="button-icon w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
             </svg>
           </button>
         </div>
 
-        ${config.requireConsent ? `
+        ${
+          effectiveConfig.requireConsent
+            ? `
           <div class="newsletter-consent">
             <label class="consent-label">
               <input
@@ -266,7 +307,9 @@ const createFormHTML = (config) => {
               <span class="consent-text">${sanitizeHTML(consentText)}</span>
             </label>
           </div>
-        ` : ''}
+        `
+            : ''
+        }
 
         <div id="newsletter-error" class="newsletter-error" role="alert" aria-live="polite"></div>
         <div class="newsletter-message" role="status" aria-live="polite" aria-atomic="true"></div>
@@ -446,13 +489,14 @@ const validateForm = (formElement, config) => {
  * @param {Event} event - Submit event
  * @param {HTMLFormElement} formElement - Form element
  * @param {NewsletterConfig} config - Form configuration
+ * @param {Object|null} experimentContext - Experiment context
  */
-const handleSubmit = async (event, formElement, config) => {
+const handleSubmit = async (event, formElement, config, experimentContext = null) => {
   event.preventDefault();
 
   const messageElement = formElement.querySelector('.newsletter-message');
   const errorElement = formElement.querySelector('#newsletter-error');
-  
+
   clearMessage(messageElement);
   clearError(errorElement);
 
@@ -461,9 +505,21 @@ const handleSubmit = async (event, formElement, config) => {
     return;
   }
 
-  logEvent('newsletter_submit_attempt', {
+  const eventProps = {
     email_domain: formData.email.split('@')[1],
-  });
+    ...(experimentContext
+      ? {
+          experimentId: experimentContext.experimentId,
+          variantId: experimentContext.variantId,
+        }
+      : {}),
+  };
+
+  logEvent('newsletter_submit_attempt', eventProps);
+
+  if (typeof window !== 'undefined' && window.trackNewsletterSubmitAttempt) {
+    window.trackNewsletterSubmitAttempt(eventProps);
+  }
 
   if (config.onSubmit) {
     try {
@@ -481,17 +537,49 @@ const handleSubmit = async (event, formElement, config) => {
 
   setLoadingState(formElement, true);
 
+  const startTime = performance.now();
+
   try {
+    const submitData = {
+      ...formData,
+      ...(experimentContext
+        ? {
+            experiment: {
+              id: experimentContext.experimentId,
+              variant: experimentContext.variantId,
+            },
+          }
+        : {}),
+    };
+
     const response = await submitSignup(
       config.submitUrl,
-      formData,
+      submitData,
       config.method,
       config.submitTimeout
     );
 
-    logEvent('newsletter_submit_success', {
-      response_time_ms: performance.now(),
-    });
+    const responseTime = performance.now() - startTime;
+
+    const successProps = {
+      response_time_ms: responseTime.toFixed(2),
+      ...(experimentContext
+        ? {
+            experimentId: experimentContext.experimentId,
+            variantId: experimentContext.variantId,
+          }
+        : {}),
+    };
+
+    logEvent('newsletter_submit_success', successProps);
+
+    if (typeof window !== 'undefined' && window.trackNewsletterSubmitSuccess) {
+      window.trackNewsletterSubmitSuccess({
+        ...successProps,
+        emailDomain: formData.email.split('@')[1],
+        responseTime,
+      });
+    }
 
     if (config.showSuccessMessage) {
       showMessage(
@@ -517,10 +605,30 @@ const handleSubmit = async (event, formElement, config) => {
       }
     }
   } catch (error) {
-    logEvent('newsletter_submit_error', {
+    const errorProps = {
       error_message: error.message,
       error_stack: error.stack,
-    });
+      ...(experimentContext
+        ? {
+            experimentId: experimentContext.experimentId,
+            variantId: experimentContext.variantId,
+          }
+        : {}),
+    };
+
+    logEvent('newsletter_submit_error', errorProps);
+
+    if (typeof window !== 'undefined' && window.trackNewsletterSubmitError) {
+      window.trackNewsletterSubmitError({
+        error: error.message,
+        ...(experimentContext
+          ? {
+              experimentId: experimentContext.experimentId,
+              variantId: experimentContext.variantId,
+            }
+          : {}),
+      });
+    }
 
     showMessage(
       messageElement,
@@ -546,13 +654,15 @@ const handleSubmit = async (event, formElement, config) => {
  * Attaches event listeners to form
  * @param {HTMLFormElement} formElement - Form element
  * @param {NewsletterConfig} config - Form configuration
+ * @param {Object|null} experimentContext - Experiment context
  * @returns {Function} Cleanup function
  */
-const attachEventListeners = (formElement, config) => {
-  const submitHandler = (event) => handleSubmit(event, formElement, config);
-  
+const attachEventListeners = (formElement, config, experimentContext = null) => {
+  const submitHandler = event => handleSubmit(event, formElement, config, experimentContext);
+
   const emailInput = formElement.querySelector('#newsletter-email');
   const errorElement = formElement.querySelector('#newsletter-error');
+  const consentCheckbox = formElement.querySelector('#newsletter-consent');
 
   const inputHandler = () => {
     if (errorElement.textContent) {
@@ -568,6 +678,48 @@ const attachEventListeners = (formElement, config) => {
       if (!validation.valid) {
         emailInput.setAttribute('aria-invalid', 'true');
         showError(errorElement, validation.error);
+
+        if (typeof window !== 'undefined' && window.trackNewsletterValidationError) {
+          window.trackNewsletterValidationError({
+            field: 'email',
+            error: validation.error,
+            ...(experimentContext
+              ? {
+                  experimentId: experimentContext.experimentId,
+                  variantId: experimentContext.variantId,
+                }
+              : {}),
+          });
+        }
+      }
+    }
+  };
+
+  const focusHandler = () => {
+    if (typeof window !== 'undefined' && window.trackNewsletterFormFocus) {
+      window.trackNewsletterFormFocus({
+        field: 'email',
+        ...(experimentContext
+          ? {
+              experimentId: experimentContext.experimentId,
+              variantId: experimentContext.variantId,
+            }
+          : {}),
+      });
+    }
+  };
+
+  const consentChangeHandler = () => {
+    if (consentCheckbox && consentCheckbox.checked) {
+      if (typeof window !== 'undefined' && window.trackNewsletterConsentAccepted) {
+        window.trackNewsletterConsentAccepted({
+          ...(experimentContext
+            ? {
+                experimentId: experimentContext.experimentId,
+                variantId: experimentContext.variantId,
+              }
+            : {}),
+        });
       }
     }
   };
@@ -575,6 +727,11 @@ const attachEventListeners = (formElement, config) => {
   formElement.addEventListener('submit', submitHandler);
   emailInput.addEventListener('input', inputHandler);
   emailInput.addEventListener('blur', blurHandler);
+  emailInput.addEventListener('focus', focusHandler);
+
+  if (consentCheckbox) {
+    consentCheckbox.addEventListener('change', consentChangeHandler);
+  }
 
   const submitButton = formElement.querySelector('[data-submit-button]');
   const buttonText = submitButton.querySelector('.button-text');
@@ -584,17 +741,57 @@ const attachEventListeners = (formElement, config) => {
     formElement.removeEventListener('submit', submitHandler);
     emailInput.removeEventListener('input', inputHandler);
     emailInput.removeEventListener('blur', blurHandler);
+    emailInput.removeEventListener('focus', focusHandler);
+
+    if (consentCheckbox) {
+      consentCheckbox.removeEventListener('change', consentChangeHandler);
+    }
   };
+};
+
+/**
+ * Gets experiment variant for user
+ * @param {NewsletterConfig} config - Configuration
+ * @returns {Object|null} Experiment variant or null
+ * @private
+ */
+const getExperimentVariant = async config => {
+  if (!config.enableExperiment) {
+    return null;
+  }
+
+  try {
+    if (typeof window !== 'undefined' && window.getVariantForUser) {
+      const variant = window.getVariantForUser(config.experimentId, config.userId);
+
+      if (variant && typeof window.trackExperimentExposure === 'function') {
+        window.trackExperimentExposure({
+          experimentId: config.experimentId,
+          variantId: variant.id,
+        });
+      }
+
+      return variant;
+    }
+
+    return null;
+  } catch (error) {
+    logEvent('experiment_variant_error', {
+      experimentId: config.experimentId,
+      error: error.message,
+    });
+    return null;
+  }
 };
 
 /**
  * Creates newsletter signup form and renders it into target element
  * @param {HTMLElement|string} target - Target element or selector
  * @param {Object} customConfig - Form configuration
- * @returns {Object} Form instance with methods
+ * @returns {Promise<Object>} Form instance with methods
  * @throws {Error} If target not found or configuration invalid
  */
-export const createNewsletterSignup = (target, customConfig = {}) => {
+export const createNewsletterSignup = async (target, customConfig = {}) => {
   const startTime = performance.now();
 
   try {
@@ -608,7 +805,17 @@ export const createNewsletterSignup = (target, customConfig = {}) => {
 
     const config = validateConfig(customConfig);
 
-    const formHTML = createFormHTML(config);
+    const variant = await getExperimentVariant(config);
+
+    const experimentContext = variant
+      ? {
+          experimentId: config.experimentId,
+          variantId: variant.id,
+          variantName: variant.name,
+        }
+      : null;
+
+    const formHTML = createFormHTML(config, variant);
     targetElement.innerHTML = formHTML;
 
     const formElement = targetElement.querySelector('[data-newsletter-form]');
@@ -616,27 +823,48 @@ export const createNewsletterSignup = (target, customConfig = {}) => {
       throw new Error('Failed to create newsletter signup form element');
     }
 
-    const cleanup = attachEventListeners(formElement, config);
+    const cleanup = attachEventListeners(formElement, config, experimentContext);
 
     const renderTime = performance.now() - startTime;
-    logEvent('newsletter_signup_rendered', {
+    const renderProps = {
       render_time_ms: renderTime.toFixed(2),
       require_consent: config.requireConsent,
-    });
+      ...(experimentContext
+        ? {
+            experimentId: experimentContext.experimentId,
+            variantId: experimentContext.variantId,
+          }
+        : {}),
+    };
+
+    logEvent('newsletter_signup_rendered', renderProps);
+
+    if (typeof window !== 'undefined' && window.trackNewsletterFormView) {
+      window.trackNewsletterFormView({
+        ...(experimentContext
+          ? {
+              experimentId: experimentContext.experimentId,
+              variantId: experimentContext.variantId,
+            }
+          : {}),
+      });
+    }
 
     return {
       element: formElement,
       config,
+      variant,
+      experimentContext,
       reset: () => {
         formElement.reset();
         const emailInput = formElement.querySelector('#newsletter-email');
         const errorElement = formElement.querySelector('#newsletter-error');
         const messageElement = formElement.querySelector('.newsletter-message');
-        
+
         emailInput.setAttribute('aria-invalid', 'false');
         clearError(errorElement);
         clearMessage(messageElement);
-        
+
         logEvent('newsletter_signup_reset');
       },
       validate: () => {
@@ -646,7 +874,7 @@ export const createNewsletterSignup = (target, customConfig = {}) => {
       getData: () => {
         const emailInput = formElement.querySelector('#newsletter-email');
         const consentCheckbox = formElement.querySelector('#newsletter-consent');
-        
+
         return {
           email: emailInput.value.trim(),
           consent: config.requireConsent ? consentCheckbox?.checked : true,
